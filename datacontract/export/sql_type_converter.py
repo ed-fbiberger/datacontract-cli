@@ -97,6 +97,10 @@ def convert_to_sql_type(field: Union[SchemaProperty, FieldLike], server_type: st
     if physical_type:
         return physical_type
 
+    # ODCS: physicalType is a direct attribute, not in customProperties
+    if isinstance(field, SchemaProperty) and field.physicalType:
+        return field.physicalType
+
     if server_type == "snowflake":
         return convert_to_snowflake(field)
     elif server_type == "postgres":
