@@ -92,14 +92,27 @@ def _get_nested_fields(field: Union[SchemaProperty, FieldLike]) -> Dict[str, Uni
     return field.fields if field.fields else {}
 
 
+def _normalize_physical_type(physical_type: str, server_type: str) -> str:
+    """Normalize a physicalType for the target database.
+
+    PostgreSQL reports DECIMAL/NUMERIC with precision as just 'numeric'
+    in information_schema, so we must normalize to match.
+    """
+    if server_type == "postgres":
+        if physical_type.upper().startswith("DECIMAL") or physical_type.upper().startswith("NUMERIC"):
+            return "numeric"
+    return physical_type
+
+
 def convert_to_sql_type(field: Union[SchemaProperty, FieldLike], server_type: str) -> str:
     physical_type = _get_config_value(field, "physicalType")
-    if physical_type:
-        return physical_type
 
     # ODCS: physicalType is a direct attribute, not in customProperties
-    if isinstance(field, SchemaProperty) and field.physicalType:
-        return field.physicalType
+    if not physical_type and isinstance(field, SchemaProperty) and field.physicalType:
+        physical_type = field.physicalType
+
+    if physical_type:
+        return _normalize_physical_type(physical_type, server_type)
 
     if server_type == "snowflake":
         return convert_to_snowflake(field)
